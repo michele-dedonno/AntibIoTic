@@ -34,3 +34,5 @@ The Antibiotic bot can communicate with a server and currently the following com
 # Code style
 The LLVM Coding Standards is used for the C code.
 Format the code by running `clang-format -i -style=LLVM *.c *.h` inside the `src` directory.
+
+Origin: https://github.com/seihtam/antibiotic
