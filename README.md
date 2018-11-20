@@ -1,5 +1,5 @@
 # AntibIoTic
-The Fog-based Antivirus for Internet of Things
+The Fog-based anti-malware  for Internet of Things
 
 
 Work in progress ...
