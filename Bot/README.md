@@ -34,4 +34,4 @@ The LLVM Coding Standards is used for the C code.
 Format the code by running `clang-format -i -style=LLVM *.c *.h` inside the `src` directory.
 
 # Acknowledgment
-The first version of this AntibIoTic bot module was created as a part of the Bachelor's thesis "Bot module for AntibIoTic" (2018) by Mathies Svarrer-Lanthén, under the supervision of Michele De Donno (PhD student) and Nicola Dragoni (Associate Professor) at DTU, Technical University of Denmark (https://github.com/seihtam/antibiotic).
+The first version of this AntibIoTic bot module was created at DTU (Technical University of Denmark) as a part of the Bachelor's thesis: "Bot module for AntibIoTic" (2018), by Mathies Svarrer-Lanthén under the supervision of Michele De Donno (PhD student) and Nicola Dragoni (Associate Professor) -- https://github.com/seihtam/antibiotic.
