@@ -11,3 +11,7 @@ We are working offline and we update this repository when we have a stable versi
 
 
 > Michele De Donno and the **Antib*IoT*ic** team.
+
+# Copyright
+Copyright © 2017-2020 Michele De Donno, Technical University of Denmark.
+All rights reserved.
