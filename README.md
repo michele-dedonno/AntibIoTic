@@ -36,7 +36,7 @@ As an overview, the following steps should be followed:
 - Léo Gigandon (M.Sc. level project)
 
 Many other people were involved and contributed to the design of Antib*IoT*ic. 
-Here we mentioned only contributors for the code in this repository.
+Here, we mentioned only contributors to the code available in this repository.
 
 ## Disclaimer and License
 Although the aim is to fully build a security system for the Internet of Things, this project is currently intended for academic and research purposes, thus, you should use it with caution and at your own risk. 
