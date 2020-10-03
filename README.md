@@ -11,7 +11,7 @@ We mainly work offline and we update this repository when we have a stable versi
 Right now, the code included in this repository implements only a subset of the functionalities of **Antib*IoT*ic**. In particular, it implements the edge of the Antib*IoT*ic architecture characterized by the interaction of a Fog node, running the Antib*IoT*ic gateway, and 3 IoT devices, running the Antib*IoT*ic agent.
 For the full design and list of features please refer to the latest published research paper [[EuroS&PW'19]](https://ieeexplore.ieee.org/abstract/document/8802381).
 
-**If Antib*IoI*ic was useful for your research, you are kindly asked to cite the latest published Antib*IoT*ic paper [[EuroS&PW'19]](https://ieeexplore.ieee.org/abstract/document/8802381).**
+**If Antib*IoT*ic was useful for your research, you are kindly asked to cite the latest published Antib*IoT*ic paper [[EuroS&PW'19]](https://ieeexplore.ieee.org/abstract/document/8802381).**
 
 > Michele De Donno and the **Antib*IoT*ic** team.
 
