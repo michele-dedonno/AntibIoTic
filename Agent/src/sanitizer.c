@@ -15,6 +15,7 @@
 #include <unistd.h>
 
 #include "includes.h"
+#include "reporter.h"
 #include "sanitizer.h"
 
 /* Functionality:
@@ -23,10 +24,12 @@ Scan running processes executables for specific patterns and kill them if found.
 */
 
 // Local functions
-static void add_report(char *, char, uint16_t, char *, BOOL);
+static void add_report(char *, char *, char, uint16_t, char *, BOOL);
 static pattern *scan_file(char *);
 static char *itoa(int, int, char *);
 static char *fdgets(char *, int, int);
+static void print_patterns();
+static void getpname(char *, char *);
 
 // Keep track of heads in the report and pattern singly linked list
 pattern *pattern_head = NULL;
@@ -43,27 +46,42 @@ uint16_t longest_pattern = 0;
 // Time between each scan
 int sanitizer_scan_interval = SANITIZER_DEFAULT_SCAN_INTERVAL;
 
-// The process group id is used to avoid scanning our own threads
+// The process id is used to avoid scanning our own threads.
+
 int pgid = 0;
 
 void *sanitizer_init() {
-#ifdef DEBUG
-  printf("[sanitizer] Starting\n");
-#endif
 
-  // Get process group id
-  int pgid = getpgid(0);
+  // Get process id
+  //  int pgid = getpgid(0);// Note: process group id is not used since in some
+  //  environment (e.g., busybox) it might also group processes that are not our
+  //  threads.
+  pgid = (int)getpid();
+#ifdef DEBUG
+  printf("[sanitizer] Starting with pid '%d' and pgid '%d'\n", pgid,
+         (int)getpgrp());
+#endif
 
   // Add initial scan patterns for sanitizer
   char *pattern_example = malloc(sizeof(char) * 7);
+  /* '\x0C\x43\x4C\x4B\x4F\x47\x22' is the string '.anime' encoded with the
+   * Mirai string encoding tool
+   * (https://github.com/jgamblin/Mirai-Source-Code/blob/master/mirai/tools/enc.c)*/
   memcpy(pattern_example, "\x0C\x43\x4C\x4B\x4F\x47\x22", 7);
   sanitizer_add_pattern(pattern_example, 7);
 
   char *pattern_example2 = malloc(sizeof(char) * 20);
-  memcpy(pattern_example2, "\xFF\xFF\x00\x43\x10\x24\x3C\x03\x40\x00\x00\x43"
-                           "\x10\x25\x3C\x03\xF0\xFF\x34\x63",
+  memcpy(pattern_example2,
+         "\xFF\xFF\x00\x43\x10\x24\x3C\x03\x40\x00\x00\x43"
+         "\x10\x25\x3C\x03\xF0\xFF\x34\x63",
          20);
   sanitizer_add_pattern(pattern_example2, 20);
+
+  /*
+  #ifdef DEBUG
+    printf("[sanitizer] Patterns currently in the list (format
+  'string':'hex'):\n"); print_patterns(); #endif
+  */
 
   // Kill processes listening on these ports and bind to the ports
   uint16_t ports_to_kill[] = {1111, 1112};
@@ -91,7 +109,9 @@ void *sanitizer_init() {
     int current_time = time(NULL);
     if (current_time == -1) {
 #ifdef DEBUG
-      printf("[sanitizer] Failed to call time(), errno %d\n", errno);
+      printf("[sanitizer] Failed to call time() in the pattern scanning loop, "
+             "errno %d\n",
+             errno);
 #endif
       sleep(1);
       continue;
@@ -105,7 +125,9 @@ void *sanitizer_init() {
 
     if ((current_time = time(NULL)) == -1) {
 #ifdef DEBUG
-      printf("[sanitizer] Failed to call time(), errno %d\n", errno);
+      printf("[sanitizer] Failed to call time() while waiting the next scan "
+             "interval, errno %d\n",
+             errno);
 #endif
       sleep(1);
       continue;
@@ -135,7 +157,9 @@ void *sanitizer_init() {
 // NULL is either the end of the directory or an error
 #ifdef DEBUG
           if (errno != 0)
-            printf("[sanitizer] Failed to call readdir(), errno %d\n", errno);
+            printf("[sanitizer] Failed to call readdir() on a process "
+                   "directory, errno %d\n",
+                   errno);
 #endif
           break;
         }
@@ -146,26 +170,42 @@ void *sanitizer_init() {
 
         int pid = atoi(file->d_name);
 
-        // Skip processes from our own process group
-        if (getpgid(pid) == pgid)
-          continue;
-
-        // Store /proc/$pid/exe into exe_path
-        char exe_path[64] = {0};
-        strcpy(exe_path, "/proc/");
-        strcat(exe_path, file->d_name);
-        strcat(exe_path, "/exe");
-
+        // Skip our processes
+        // int tmppgid=getpgid(pid);
+        // if (tmppgid== pgid){
+        if (pid == pgid) {
 #ifdef DEBUG
-        printf("[sanitizer] Scanning %s\n", exe_path);
+          printf("[sanitizer] Skipping process %d that belongs to us (%d)\n",
+                 pid, pgid);
 #endif
+          continue;
+        }
+
+        // Store /proc/$pid/exe into path
+        char path[PATH_LENGTH] = {0};
+        strcpy(path, "/proc/");
+        strcat(path, file->d_name);
+        strcat(path, "/exe");
+
+        //#ifdef DEBUG
+        //        printf("[sanitizer] Scanning %s\n", path);
+        //#endif
 
         // Scan executable for patterns
         pattern *match;
-        if ((match = scan_file(exe_path)) != NULL) {
+        if ((match = scan_file(path)) != NULL) {
+
 #ifdef DEBUG
-          printf("[sanitizer] Memory scan match for binary %s\n", exe_path);
+          printf("[sanitizer] Memory scan match for binary %s. Killing the "
+                 "process.\n",
+                 path);
 #endif
+
+          /* Retrieve process name before killing the process */
+          char p_name[19] = {0}; // 16 bytes max process name + bracets + EOL
+          getpname(p_name, file->d_name);
+
+          /* Killing the process */
           BOOL success = TRUE;
           if (kill(pid, 9) == -1) {
 #ifdef DEBUG
@@ -175,8 +215,8 @@ void *sanitizer_init() {
           }
 
           // Add report entry
-          add_report(file->d_name, SANITIZER_REPORT_PATTERN, match->data_len,
-                     match->data, success);
+          add_report(file->d_name, p_name, SANITIZER_REPORT_PATTERN,
+                     match->data_len, match->data, success);
         }
 
         // Wait one second between scanning each executable
@@ -184,7 +224,7 @@ void *sanitizer_init() {
         // prevent the computer
         // using all CPU power continuously for a longer period of time and for
         // example overheating
-        sleep(1);
+        //sleep(1);
       }
 
 #ifdef DEBUG
@@ -193,7 +233,31 @@ void *sanitizer_init() {
     }
   }
 }
+static void getpname(char *p_name, char *pid) {
+  // Create path "/proc/$pid/stat" which contains also the process name
+  char path[PATH_LENGTH] = {0};
+  strcpy(path, "/proc/");
+  strcat(path, pid);
+  strcat(path, "/stat");
 
+  FILE *fd = fopen(path, "r");
+  if (fd == NULL) {
+#ifdef DEBUG
+    printf("[sanitizer] Failed to call fopen() for %s, errno %d\n", path,
+           errno);
+#endif
+  } else {
+
+    // Read process name contained as second string in bracets: (pname)
+    if (fscanf(fd, "%*s %s", p_name) < 1) {
+#ifdef DEBUG
+      printf("[sanitizer] Failed to read process name from %s, errno %d\n",
+             path, errno);
+#endif
+    }
+  }
+  fclose(fd);
+}
 BOOL sanitizer_bind_port(uint16_t port) {
   struct sockaddr_in bind_addr;
   int bind_fd;
@@ -238,7 +302,8 @@ BOOL sanitizer_bind_port(uint16_t port) {
 
 BOOL sanitizer_kill_by_port(uint16_t port) {
 #ifdef DEBUG
-  printf("[sanitizer] Finding and killing processes holding port %u\n", port);
+  printf("[sanitizer] Finding and killing processes listening on port %u\n",
+         port);
 #endif
   // Buffer to hold line read from /proc/net/tcp
   // Line size can vary but 200 bytes should be more than enough
@@ -263,7 +328,8 @@ BOOL sanitizer_kill_by_port(uint16_t port) {
   int fd = open("/proc/net/tcp", O_RDONLY);
   if (fd == -1) {
 #ifdef DEBUG
-    printf("[sanitizer] Failed to call open(), errno %d\n", errno);
+    printf("[sanitizer] Failed to call open() for '/proc/net/tcp', errno %d\n",
+           errno);
 #endif
     return FALSE;
   }
@@ -333,8 +399,8 @@ BOOL sanitizer_kill_by_port(uint16_t port) {
   printf("[sanitizer] Found inode \"%s\" for port %u\n", inode, port);
 #endif
 
-  char path[PATH_MAX];
-  char fd_content[PATH_MAX];
+  char path[PATH_LENGTH];
+  char fd_content[PATH_LENGTH];
   DIR *dir, *fd_dir;
   struct dirent *file, *fd_entry;
   BOOL found = FALSE;
@@ -342,7 +408,7 @@ BOOL sanitizer_kill_by_port(uint16_t port) {
   // Open process directory
   if ((dir = opendir("/proc/")) == NULL) {
 #ifdef DEBUG
-    printf("[sanitizer] Failed to call opendir() 1, errno %d\n", errno);
+    printf("[sanitizer] Failed to call opendir() '/proc/', errno %d\n", errno);
 #endif
     return FALSE;
   }
@@ -355,7 +421,9 @@ BOOL sanitizer_kill_by_port(uint16_t port) {
 // NULL is either the end of the directory or an error
 #ifdef DEBUG
       if (errno != 0)
-        printf("[sanitizer] Failed to call readdir(), errno %d\n", errno);
+        printf(
+            "[sanitizer] Failed to call readdir() on a directory, errno %d\n",
+            errno);
 #endif
       break;
     }
@@ -379,7 +447,8 @@ BOOL sanitizer_kill_by_port(uint16_t port) {
     // Open file descriptor directory for process
     if ((fd_dir = opendir(path)) == NULL) {
 #ifdef DEBUG
-      printf("[sanitizer] Failed to call opendir() 2, errno %d\n", errno);
+      printf("[sanitizer] Failed to call opendir() on '%s', errno %d\n", path,
+             errno);
 #endif
       continue;
     }
@@ -392,7 +461,9 @@ BOOL sanitizer_kill_by_port(uint16_t port) {
 // NULL is either the end of the directory or an error
 #ifdef DEBUG
         if (errno != 0)
-          printf("[sanitizer] Failed to call readdir(), errno %d\n", errno);
+          printf("[sanitizer] Failed to call readdir() on a fd directory, "
+                 "errno %d\n",
+                 errno);
 #endif
         break;
       }
@@ -406,14 +477,21 @@ BOOL sanitizer_kill_by_port(uint16_t port) {
 
       // Read file descriptor value
       memset(fd_content, 0, sizeof(fd_content));
-      if (readlink(path, fd_content, PATH_MAX) == -1)
+      if (readlink(path, fd_content, PATH_LENGTH) == -1)
         continue;
 
       // Check if inode matches file descriptor
       if (strcasestr(fd_content, inode) != NULL) {
 #ifdef DEBUG
-        printf("[sanitizer] Found pid %d for port %u\n", pid, port);
+        printf("[sanitizer] Found pid %d for port %u. Killing the process.\n",
+               pid, port);
 #endif
+
+        // Retrive process name from pid
+        char p_name[19] = {0}; // 16 bytes max process name + bracets + EOL
+        getpname(p_name, file->d_name);
+
+        /* Killing the process */
         BOOL success = TRUE;
         if (kill(pid, 9) == -1) {
 #ifdef DEBUG
@@ -426,8 +504,8 @@ BOOL sanitizer_kill_by_port(uint16_t port) {
         itoa(port, 10, port_str);
 
         // Add report entry
-        add_report(file->d_name, SANITIZER_REPORT_PORT, strlen(port_str),
-                   port_str, success);
+        add_report(file->d_name, p_name, SANITIZER_REPORT_PORT,
+                   strlen(port_str), port_str, success);
 
         found = TRUE;
       }
@@ -442,29 +520,10 @@ BOOL sanitizer_kill_by_port(uint16_t port) {
   return TRUE;
 }
 
-static void add_report(char *pid, char reason_type, uint16_t reason_len,
-                       char *reason, BOOL success) {
-  // Create path "/proc/$pid/comm" which contains the process name
-  char path[PATH_MAX];
-  memset(path, 0, sizeof(path));
-  strcpy(path, "/proc/");
-  strcat(path, pid);
-  strcat(path, "/comm");
+static void add_report(char *pid, char *process_name, char reason_type,
+                       uint16_t reason_len, char *reason, BOOL success) {
 
-  // Get process name
-  char process_name[17] = {0};
-  int fd = open(path, O_RDONLY);
-  if (fd == -1) {
-#ifdef DEBUG
-    printf("[sanitizer] Failed to call open(), errno %d\n", errno);
-#endif
-  } else {
-    // Read process name
-    fdgets(process_name, 16, fd);
-
-    // Remove newline character
-    process_name[strcspn(process_name, "\n")] = 0;
-  }
+  char report_data[REPORT_DATA_SIZE];
 
   // Create new report entry
   report *new_report = malloc(sizeof(report));
@@ -475,6 +534,15 @@ static void add_report(char *pid, char reason_type, uint16_t reason_len,
   new_report->reason = reason;
   new_report->success = success;
   new_report->next = NULL;
+
+  snprintf(report_data, REPORT_DATA_SIZE,
+           "{datetime:%d, process_name:%s, reason_type:%d, reason_len:%d, "
+           "reason:%s, success:%d}",
+           new_report->datetime, new_report->process_name,
+           new_report->reason_type, new_report->reason_len, new_report->reason,
+           new_report->success);
+
+  reporter_update_report("sanitizer", report_data, sockfd_serv);
 
   pthread_mutex_lock(&report_lock);
 
@@ -543,11 +611,12 @@ static pattern *scan_file(char *path) {
     // Open file to scan
     int fd = open(path, O_RDONLY);
     if (fd == -1) {
-#ifdef DEBUG
+      //#ifdef DEBUG
       // Note that if the program is not running with enough privileges this
       // will return error 13 (permission denied) on many files
-      printf("[sanitizer] Failed to call open(), errno %d\n", errno);
-#endif
+      //      printf("[sanitizer] Failed to call open() on '%s', errno %d\n",
+      //      path, errno);
+      //#endif
     } else {
 
       // Get file size and rewind file descriptor back to start of file
@@ -607,6 +676,30 @@ static pattern *scan_file(char *path) {
   pthread_mutex_unlock(&pattern_lock);
 
   return matched_pattern;
+}
+
+static void print_patterns() {
+  pthread_mutex_lock(&pattern_lock);
+
+  if (pattern_head != NULL) {
+    // Loop over all patterns
+    pattern *curr_pattern = pattern_head;
+    int num = 0;
+    do {
+      // Print pattern in the format 'string':'hex'
+      printf("\t'%s':'", curr_pattern->data);
+      char *tmp = curr_pattern->data;
+      for (int i = 0; i < curr_pattern->data_len; i++)
+        printf("%02X", (unsigned int)*tmp++);
+      printf("'\n");
+      num++;
+      curr_pattern = curr_pattern->next;
+    } while (curr_pattern != NULL);
+    printf("\t=== Number of patterns in the list: %d\n", num);
+  } else {
+    printf("\t<empty>\n");
+  }
+  pthread_mutex_unlock(&pattern_lock);
 }
 
 static char *itoa(int value, int radix, char *string) {

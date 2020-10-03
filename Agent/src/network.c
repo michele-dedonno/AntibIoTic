@@ -1,14 +1,15 @@
 #define _GNU_SOURCE
 
-#ifdef DEBUG
-#include <stdio.h>
-#endif
 #include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <pthread.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/sendfile.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/time.h>
 #include <unistd.h>
 
@@ -26,12 +27,17 @@ Contains all network code related to communicating with the server.
 static BOOL recv_full(int, void *, size_t);
 
 BOOL send_data(int sockfd, const void *data, int data_len) {
+  pthread_mutex_lock(&m_sockfd_serv);
+
   if (send(sockfd, data, data_len, MSG_NOSIGNAL) == -1) {
 #ifdef DEBUG
     printf("[network] Failed to call send(), errno %d\n", errno);
 #endif
+    pthread_mutex_unlock(&m_sockfd_serv);
     return FALSE;
   }
+
+  pthread_mutex_unlock(&m_sockfd_serv);
 
   return TRUE;
 }
@@ -145,6 +151,18 @@ static BOOL recv_full(int sockfd, void *buf, size_t to_read) {
 }
 
 int connect_nonblock(uint32_t ip, uint16_t port) {
+  // Setup socket address
+  struct sockaddr_in srv_addr;
+  memset(&srv_addr, 0, sizeof(srv_addr));
+  srv_addr.sin_family = AF_INET;
+  srv_addr.sin_addr.s_addr = ip;
+  srv_addr.sin_port = htons(port);
+
+#ifdef DEBUG
+  printf("[network] Attempting to connect to %s:%u\n",
+         inet_ntoa(srv_addr.sin_addr), port);
+#endif
+
   // Setup socket
   int sockfd;
   if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
@@ -163,27 +181,22 @@ int connect_nonblock(uint32_t ip, uint16_t port) {
     return -1;
   }
 
+  // Connect to server asynchronously
+  connect(sockfd, (struct sockaddr *)&srv_addr, sizeof(struct sockaddr_in));
+
+  return sockfd;
+}
+
+int connect_block(uint32_t ip, uint16_t port) {
   // Setup socket address
   struct sockaddr_in srv_addr;
   memset(&srv_addr, 0, sizeof(srv_addr));
   srv_addr.sin_family = AF_INET;
   srv_addr.sin_addr.s_addr = ip;
   srv_addr.sin_port = htons(port);
-
-  // Connect to server asynchronously
-  connect(sockfd, (struct sockaddr *)&srv_addr, sizeof(struct sockaddr_in));
-
 #ifdef DEBUG
   printf("[network] Attempting to connect to %s:%u\n",
          inet_ntoa(srv_addr.sin_addr), port);
-#endif
-
-  return sockfd;
-}
-
-int connect_block(uint32_t ip, uint16_t port) {
-#ifdef DEBUG
-  printf("[network] Attempting to connect to server\n");
 #endif
 
   // Setup socket
@@ -208,13 +221,6 @@ int connect_block(uint32_t ip, uint16_t port) {
     return -1;
   }
 
-  // Setup socket address
-  struct sockaddr_in srv_addr;
-  memset(&srv_addr, 0, sizeof(srv_addr));
-  srv_addr.sin_family = AF_INET;
-  srv_addr.sin_addr.s_addr = ip;
-  srv_addr.sin_port = htons(port);
-
   // Connect to server
   if (connect(sockfd, (struct sockaddr *)&srv_addr,
               sizeof(struct sockaddr_in)) < 0) {
@@ -226,7 +232,7 @@ int connect_block(uint32_t ip, uint16_t port) {
   }
 
 #ifdef DEBUG
-  printf("[network] Connected to %s:%u\n", inet_ntoa(srv_addr.sin_addr), port);
+  printf("[network] Connected\n");
 #endif
 
   return sockfd;

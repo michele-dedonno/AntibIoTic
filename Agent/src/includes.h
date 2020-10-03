@@ -1,5 +1,6 @@
 #pragma once
 
+#include <pthread.h>
 #include <stdint.h>
 
 #define FALSE 0
@@ -11,14 +12,18 @@ typedef char BOOL;
 
 // Program version
 // This is sent to the server on initial connection
-#define VERSION "1.0"
+#define VERSION "2.0"
 
 // Server information
 // If SERVER_DOMAIN is defined then the IP will be resolved by a DNS lookup,
-// otherwise the IP defined in SERVER_IP will be used
+// otherwise the IP defined in SERVER_IP will be used as default
 //#define SERVER_DOMAIN ""
-#define SERVER_IP INET_ADDR(127, 0, 0, 1)
+#define SERVER_IP INET_ADDR(192, 169, 0, 2)
 #define SERVER_PORT 1234
+
+// Name for the JSON report
+#define REPORT_PATH "/tmp/report.txt"
+#define REPORT_BUF 1024
 
 // Port used to check if another instance is running
 #define SINGLE_INSTANCE_PORT 47861
@@ -27,12 +32,17 @@ typedef char BOOL;
 // The current number is arbitrarily chosen
 #define MAX_CONCURRENT_COMMANDS 50
 
+// Maximum data allowed in a report update
+#define REPORT_DATA_SIZE 1500
+
 // Biggest command data length allowed
 #define CMD_MAX_LENGTH 1000
 
 // Commands types
 #define CMD_SEND_ID 0x01
 #define CMD_SEND_VERSION 0x02
+#define CMD_SEND_REPORT 0x03
+#define CMD_SEND_UPDATE 0x04
 #define CMD_SEND_SUCCESS 0x88
 #define CMD_SEND_ERROR 0x99
 
@@ -44,6 +54,7 @@ typedef char BOOL;
 #define CMD_RECEIVE_EXIT 0x06
 #define CMD_RECEIVE_CLEAR_PATTERNS 0x07
 #define CMD_RECEIVE_REPORT_STATUS 0x08
+#define CMD_RECEIVE_SEND_REPORT 0x09
 
 // Command structure
 typedef struct {
@@ -51,3 +62,6 @@ typedef struct {
   uint16_t data_len;
   char *data;
 } command;
+
+extern int sockfd_serv;
+extern pthread_mutex_t m_sockfd_serv;

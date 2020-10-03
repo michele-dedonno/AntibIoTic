@@ -6,6 +6,6 @@
 #define SENTINEL_PORT 4321
 
 // Interval between each keep-alive message in seconds
-#define SENTINEL_INTERVAL 60
+#define SENTINEL_INTERVAL 15 
 
 void *sentinel_init();

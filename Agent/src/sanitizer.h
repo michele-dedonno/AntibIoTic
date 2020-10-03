@@ -4,7 +4,12 @@
 #include <pthread.h>
 
 // How often device should be scanned in seconds
-#define SANITIZER_DEFAULT_SCAN_INTERVAL 600
+#define SANITIZER_DEFAULT_SCAN_INTERVAL 10
+
+// Maximum pattern lenght supporter (a trade off between compatibility and
+// resources should be chosen)
+#define PATH_LENGTH 256
+
 // Make scan interval extern so it can be changed from other threads
 extern int sanitizer_scan_interval;
 

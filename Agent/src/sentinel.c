@@ -1,8 +1,7 @@
 #define _GNU_SOURCE
 
-#ifdef DEBUG
 #include <stdio.h>
-#endif
+#include <sys/sendfile.h>
 #include <unistd.h>
 
 #include "includes.h"
@@ -14,9 +13,10 @@ Send keep-alive messages to the server
 */
 
 void *sentinel_init(void *ip) {
-#ifdef DEBUG
-  printf("[sentinel] Starting\n");
-#endif
+  //#ifdef DEBUG
+  //      printf("[sentinel] Starting with pid '%d' and pgid '%d'\n",
+  //      (int)getpid(), (int)getpgrp());
+  //#endif
 
   int sockfd = -1;
 

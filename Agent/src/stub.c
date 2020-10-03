@@ -16,6 +16,7 @@
 
 #include "includes.h"
 #include "network.h"
+#include "reporter.h"
 #include "sanitizer.h"
 #include "sentinel.h"
 
@@ -40,10 +41,15 @@ typedef struct {
 pthread_mutex_t command_create_lock = PTHREAD_MUTEX_INITIALIZER;
 uint16_t running_commands = 0;
 
+int sockfd_serv;
+pthread_mutex_t m_sockfd_serv;
+
 int main(int argc, char **args) {
+  uint32_t ip = -1;
+  char id[32]; // The ID is used by the server to identify the device
+
 #ifdef DEBUG
   printf("DEBUG MODE ENABLED\n");
-
 #if DEBUGFILE
   // Redirect stdout to file
   freopen("/tmp/debug.txt", "w", stdout);
@@ -52,13 +58,13 @@ int main(int argc, char **args) {
 #endif
 #endif
 
-/*
-#ifndef DEBUG
-// Delete self from disk
-// We are already running and don't need the executable anymore
-unlink(args[0]);
-#endif
-*/
+  /*
+  #ifndef DEBUG
+  // Delete self from disk
+  // We are already running and don't need the executable anymore
+  unlink(args[0]);
+  #endif
+  */
 
 #ifndef DEBUG
   // Daemonize process
@@ -68,7 +74,7 @@ unlink(args[0]);
   // Create new process group
   if (setsid() == -1) {
 #ifdef DEBUG
-    printf("[stub] Failed to call setsid(), errno %d\n", errno);
+    printf("Failed to call setsid(), errno %d\n", errno);
 #endif
     return 0;
   }
@@ -77,35 +83,72 @@ unlink(args[0]);
   // Seed the random number generator
   srand(time(0));
 
-// Lookup server IP if domain is supplied
-#ifdef SERVER_DOMAIN
-  uint32_t ip = -1;
-  while (ip == -1) {
-    ip = lookup_domain(SERVER_DOMAIN);
-    if (ip == -1) {
-      sleep(10);
-    }
+  // Check input parameters
+  // args[0] = binary name
+  // args[1] = Server IP address (if not default)
+  // args[2] = ID
+  if (argc > 3) {
+#ifdef DEBUG
+    printf("Too many arguments. Expected maximum 2.");
+#endif
+    return -1;
   }
+  if (argc > 1) {
+    // get IP addr
+    if (inet_aton(args[1], &ip) == 0) {
+#ifdef DEBUG
+      printf(
+          "[stub] Invalid server IP address: '%s'. Using default server IP.\n",
+          args[1]);
+#endif
+      ip = SERVER_IP;
+    }
+  } else {
+    // Lookp server IP if domain is supplied
+#ifdef SERVER_DOMAIN
+    ip = -1;
+    while (ip == -1) {
+      ip = lookup_domain(SERVER_DOMAIN);
+      if (ip == -1) {
+        sleep(10);
+      }
+    }
 #else
-  uint32_t ip = SERVER_IP;
+    // Use default IP address
+    ip = SERVER_IP;
+#endif
+  }
+  // Get Device ID
+  memset(id, 0, sizeof(id));
+  if (argc == 3) {
+    // Use ID provided by user
+    strncpy(id, args[2], strlen(args[2]));
+  } else {
+    // Use random ID
+    int rand_id = rand();
+    snprintf(id, sizeof(id), "%d", rand_id);
+  }
+#ifdef DEBUG
+  struct in_addr srv_print;
+  srv_print.s_addr = ip;
+  printf("[Stub] Starting with pid '%d', pgid '%d, device ID '%s', Server IP "
+         "'%s'\n",
+         (int)getpid(), (int)getpgrp(), id, inet_ntoa(srv_print));
 #endif
 
-  // Socket to connect to server
-  int sockfd_serv = -1;
+  // Initializing report
+  reporter_create_report();
 
-  // Ensure single instance is running and kill other instance if not
+  // Socket to connect to server, and preventing threads from using it while not
+  // initialized
+  sockfd_serv = -1;
+  pthread_mutex_lock(&m_sockfd_serv);
+
+  // Ensure single instance is running and kill other instance if not.
   // This may not be needed in the final version of Antibiotic but is kept for
-  // now
-  // The socket descriptor returned will be used to listen for kill requests
+  // now. The socket descriptor returned will be used to listen for kill
+  // requests.
   int sockfd_ctrl = ensure_single_instance(SINGLE_INSTANCE_PORT);
-
-  // Get id from argument
-  // The id is used by the server to identify the device
-  char id[32];
-  memset(id, 0, sizeof(id));
-  if (argc == 2) {
-    strncpy(id, args[1], strlen(args[1]));
-  }
 
   // Initialize sanitizer module
   pthread_t sanitizer_thread;
@@ -125,7 +168,9 @@ unlink(args[0]);
 #endif
   }
 
-  // Connection loop, used for checking both the control and server socket
+  // Main loop: checking both the control and server socket.
+  // If it's the first connection with the server, device ID and Agent version
+  // is sent, otherwise, wait for commands from the server
   while (TRUE) {
     fd_set readfds, writefds;
     FD_ZERO(&readfds);
@@ -145,6 +190,7 @@ unlink(args[0]);
         FD_SET(sockfd_serv, &writefds);
       }
     } else {
+      // otherwise, wait for commands from the server
       FD_SET(sockfd_serv, &readfds);
     }
 
@@ -153,7 +199,9 @@ unlink(args[0]);
     timeo.tv_usec = 0;
     timeo.tv_sec = 10;
 
-    // Wait until activity on control or server socket
+    pthread_mutex_unlock(&m_sockfd_serv);
+
+    // Wait until activity on control or server socket.
     // First argument specifies the range of file descriptors to be tested, so
     // we have to choose the highest one
     if (select((sockfd_ctrl > sockfd_serv ? sockfd_ctrl : sockfd_serv) + 1,
@@ -163,9 +211,10 @@ unlink(args[0]);
              sockfd_serv);
 #endif
       // Select may give an error if both control socket and server socket is
-      // invalid
+      // invalid.
+
       // Sleep so we don't loop quickly
-      sleep(10);
+      sleep(5);
       continue;
     }
 
@@ -176,7 +225,6 @@ unlink(args[0]);
 
       // Accept kill request
       accept(sockfd_ctrl, (struct sockaddr *)&cli_addr, &cli_addr_len);
-
 #ifdef DEBUG
       printf("[stub] Detected newer instance running, killing self\n");
 #endif
@@ -184,7 +232,10 @@ unlink(args[0]);
       exit(0);
 
       // Check if initial server connection was established
-    } else if (sockfd_serv != -1 && FD_ISSET(sockfd_serv, &writefds)) {
+    } else if (sockfd_serv != -1 &&
+               FD_ISSET(sockfd_serv,
+                        &writefds)) { // First connection to the server
+
       // Check if error occurred while connecting
       err = 0;
       socklen_t err_len = sizeof(err);
@@ -202,15 +253,22 @@ unlink(args[0]);
 #endif
         // Server connection is successfully established
         // Send ID
-        send_command(sockfd_serv, &(command){CMD_SEND_ID, strlen(id), id});
+        send_command(sockfd_serv,
+                     &(command){CMD_SEND_ID, sizeof(char) * 32, id});
 
         // Send version
         send_command(sockfd_serv,
                      &(command){CMD_SEND_VERSION, strlen(VERSION), VERSION});
+
+        // Sending update to the fog node: the main function is running
+        reporter_update_report("stub", "{status:running}", sockfd_serv);
       }
 
       // Check if we are ready to receive command from server
-    } else if (sockfd_serv != -1 && FD_ISSET(sockfd_serv, &readfds)) {
+    } else if (sockfd_serv != -1 &&
+               FD_ISSET(sockfd_serv,
+                        &readfds)) { // Subsequent connections to the server
+
       // Receive command
       command *cmd = receive_command(sockfd_serv);
 
@@ -411,34 +469,12 @@ static void *handle_command(void *args) {
     sanitizer_clear_patterns();
     break;
 
-  case CMD_RECEIVE_REPORT_STATUS:
+  case CMD_RECEIVE_SEND_REPORT:
 #ifdef DEBUG
     printf("[stub] Sending report status\n");
 #endif
+    reporter_send_report(sockfd);
 
-    pthread_mutex_lock(&report_lock);
-
-    // Evaluate report (error indicates if the evaluation passed or not)
-    // In a future version the report should be evaluated on the server
-    if (report_head != NULL) {
-      report *current_report = report_head;
-
-      // Check if all report entries was successful
-      do {
-#ifdef DEBUG
-        printf("[stub] Evaluating report: %d %s %02x %02x %s\n",
-               current_report->datetime, current_report->process_name,
-               current_report->reason_type, current_report->reason[0],
-               current_report->success ? "success" : "fail");
-#endif
-        if (!current_report->success) {
-          error = TRUE;
-          break;
-        }
-      } while ((current_report = current_report->next) != NULL);
-    }
-
-    pthread_mutex_unlock(&report_lock);
     break;
 
   default:
