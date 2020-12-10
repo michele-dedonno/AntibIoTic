@@ -16,16 +16,16 @@ For the full design and list of features please refer to the latest published re
 > Michele De Donno and the **Antib*IoT*ic** team.
 
 ## Directory Structure
-- [./tools](`./tools`): directory containg tools to help development and testing of Antib*IoT*ic. 
-- [./Agent](`./Agent`): directory containing everything related to the Antib*IoT*ic agent.
-- [./Server](`./Server`): directory containing everything related to the Antib*IoT*ic gateway.
+- [./tools](./tools): directory containg tools to help development and testing of Antib*IoT*ic. 
+- [./Agent](./Agent): directory containing everything related to the Antib*IoT*ic agent.
+- [./Server](./Server): directory containing everything related to the Antib*IoT*ic gateway.
 
 ## Deployment and Execution
 To run the code in this repository, please refer to the detailed istructions provided in each folder.
 
 As an overview, the following steps should be followed:
-1. configure the Fog node following the istructions provided in [./Server](`./Server`);
-2. configure each IoT device following the istructions provided in [./Agent](`./Agent`);
+1. configure the Fog node following the istructions provided in [./Server](./Server);
+2. configure each IoT device following the istructions provided in [./Agent](./Agent);
 3. generate and copy all required files in [./Server/.upload/](./Server/.upload) folder. The list of required files can be found in [./Server/README.md](./Server/README.md);
 4. compile and run the server. By default, it will automatically upload the agent on each IoT device.
 
