@@ -1,19 +1,19 @@
 # Antib*IoT*ic Agent
 This folder contains everything related to the Antibiotic Agent.
 In details:
-- [./src](`./src`): directory containing the source code; 
-- [./udoo-x86](`./udoo-x86`): directory containing everything needed to run the AntibIoTic agent on the UDOO x86 II ADVANCED PLUS board or similar devices.
-- [./raspberry-arm](`./raspberry-arm`): directory containing everything needed to run the AntibIoTic agent on Raspberry Pi 3 Module B+ or similar devices;
-- [./netgear-mips](`./netgear-mips`): directory containing everything needed to run the AntibIoTic agent on NETGEAR Router DGN1000 or similar devices.
+- [./src](./src): directory containing the source code; 
+- [./udoo-x86](./udoo-x86): directory containing everything needed to run the AntibIoTic agent on the UDOO x86 II ADVANCED PLUS board or similar devices.
+- [./raspberry-arm](./raspberry-arm): directory containing everything needed to run the AntibIoTic agent on Raspberry Pi 3 Module B+ or similar devices;
+- [./netgear-mips](./netgear-mips): directory containing everything needed to run the AntibIoTic agent on NETGEAR Router DGN1000 or similar devices.
 
 Each folder has a README file with further instructions.
 
 ## Compilation
 Depending on the device where the Agent needs to be executed, different instructions need to be followed. 
 Please refer to the folder that best suits the target architecture:
-- x86: [./udoo-x86](`./udoo-x86`);
-- ARM: [./raspberry-arm](`./raspberry-arm`);
-- MIPS: [./netgear-mips](`./netgear-mips`).
+- x86: [./udoo-x86](./udoo-x86);
+- ARM: [./raspberry-arm](./raspberry-arm);
+- MIPS: [./netgear-mips](./netgear-mips).
 
 ## Usage
 Once compiled, the Agent can be executed as follows:
