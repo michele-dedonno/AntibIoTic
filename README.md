@@ -47,5 +47,5 @@ This program is distributed in the hope that it will be useful, but WITHOUT ANY 
 This program is licensed under the GNU General Public License v3.0.
 
 ## Copyright
-Copyright © 2017-2020 Michele De Donno, Technical University of Denmark.
+Copyright © 2017-2021 Michele De Donno, Technical University of Denmark.
 All rights reserved.
