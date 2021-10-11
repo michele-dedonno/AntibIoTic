@@ -1,7 +1,7 @@
 # Antib*IoT*ic: the Fog-enhanced Distributed Security System to Protect the (Legacy) Internet of Things
 
 This is the official repository for **Antib*IoT*ic**, a distributed security system that relies on Fog computing to protect legacy IoT endpoints. 
-The system is based on scientific papers [[SEDA'16]](https://link.springer.com/chapter/10.1007/978-3-319-70578-1_7) [[ICFEC'19]](https://ieeexplore.ieee.org/abstract/document/8733144)[[EuroS&PW'19]](https://ieeexplore.ieee.org/abstract/document/8802381), Ph.D., M.Sc., and B.Sc. theses.
+The system is based on scientific papers [[SEDA'16]](https://link.springer.com/chapter/10.1007/978-3-319-70578-1_7) [[ICFEC'19]](https://ieeexplore.ieee.org/abstract/document/8733144)[[EuroS&PW'19]](https://ieeexplore.ieee.org/abstract/document/8802381), [[JCS'21]](http://www2.compute.dtu.dk/~xefa/files/journal/2021-jcs-antibiotic.pdf), Ph.D., M.Sc., and B.Sc. theses.
 
 A video demo showing some of the core features implemented in this repository is available [here](https://www.youtube.com/watch?v=xiIKLREo3vY).
 
@@ -10,9 +10,9 @@ We are constantly working to implement and improve **Antib*IoT*ic**. It is a lot
 We mainly work offline and we update this repository when we have a stable version of the code. 
 Right now, the code included in this repository implements only a subset of the functionalities of **Antib*IoT*ic**. In particular, it implements the edge of the Antib*IoT*ic architecture characterized by the interaction of a Fog node, running the Antib*IoT*ic gateway, and 3 IoT devices, running the Antib*IoT*ic agent.
 
-For the full design and list of features please refer to the latest published research paper [[EuroS&PW'19]](https://ieeexplore.ieee.org/abstract/document/8802381).
+For the full design and list of features please refer to the latest published research paper [[JCS'21]](http://www2.compute.dtu.dk/~xefa/files/journal/2021-jcs-antibiotic.pdf).
 
-**If Antib*IoT*ic was useful for your research, you are kindly asked to cite the latest published Antib*IoT*ic paper [[EuroS&PW'19]](https://ieeexplore.ieee.org/abstract/document/8802381).**
+**If Antib*IoT*ic was useful for your research, you are kindly asked to cite the latest published Antib*IoT*ic paper [[JCS'21]](https://content.iospress.com/articles/journal-of-computer-security/jcs210027).**
 
 > Michele De Donno and the **Antib*IoT*ic** team.
 
