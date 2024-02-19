@@ -1,6 +1,6 @@
 # Antib*IoT*ic: the Fog-enhanced Distributed Security System to Protect the (Legacy) Internet of Things
 
-![architecture](./antibiotic-2.0.png?raw=true "AntibIoTic-2.0")
+![architecture](./antibiotic-2.0.jpg?raw=true "AntibIoTic-2.0")
 
 This is the official repository for **Antib*IoT*ic**, a distributed security system that relies on Fog computing to protect legacy IoT endpoints. 
 The system is based on scientific papers [[SEDA'16]](https://link.springer.com/chapter/10.1007/978-3-319-70578-1_7) [[ICFEC'19]](https://ieeexplore.ieee.org/abstract/document/8733144)[[EuroS&PW'19]](https://ieeexplore.ieee.org/abstract/document/8802381), [[JCS'21]](http://www2.compute.dtu.dk/~xefa/files/journal/2021-jcs-antibiotic.pdf), Ph.D., M.Sc., and B.Sc. theses.
