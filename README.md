@@ -3,7 +3,7 @@
 ![architecture](./antibiotic-2.0.jpg?raw=true "AntibIoTic-2.0")
 
 This is the official repository for **Antib*IoT*ic**, a distributed security system that relies on Fog computing to protect legacy IoT endpoints. 
-The system is based on scientific papers [[SEDA'16]](https://link.springer.com/chapter/10.1007/978-3-319-70578-1_7) [[ICFEC'19]](https://ieeexplore.ieee.org/abstract/document/8733144)[[EuroS&PW'19]](https://ieeexplore.ieee.org/abstract/document/8802381), [[JCS'21]](http://www2.compute.dtu.dk/~xefa/files/journal/2021-jcs-antibiotic.pdf), Ph.D., M.Sc., and B.Sc. theses.
+The system is based on scientific papers [[SEDA'16]](https://link.springer.com/chapter/10.1007/978-3-319-70578-1_7) [[ICFEC'19]](https://ieeexplore.ieee.org/abstract/document/8733144)[[EuroS&PW'19]](https://ieeexplore.ieee.org/abstract/document/8802381), [[JCS'21]](https://orbit.dtu.dk/files/256839657/2021_jcs_antibiotic.pdf), Ph.D., M.Sc., and B.Sc. theses.
 
 A video demo showing some of the core features implemented in this repository is available [here](https://www.youtube.com/watch?v=xiIKLREo3vY).
 
